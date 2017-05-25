@@ -1,15 +1,3 @@
-var du = new function() {
-  this.format = function(/*args*/) {
-    var str = arguments[0];
-
-    for (var i=1; i < arguments.length; i++) {
-      str = str.replace("%s", arguments[i]);
-    }
-
-    return str;
-  };
-};
-
 function InputStream(input) {
   return new function() {
     var pos = 0;
@@ -40,11 +28,11 @@ function InputStream(input) {
     };
 
     this.fail = function(msg) {
-      throw new Error(du.format("%s (%s:%s)", msg, line, col));
+      throw new Error(`${msg} (${line}:${col}`);
     };
 
     this.debug = function() {
-      console.log(du.format("line: %s, col: %s, pos: %s", line, col, pos));
+      console.log(`line: ${line}, col: ${col}, pos: ${pos}`);
     };
   };
 }
