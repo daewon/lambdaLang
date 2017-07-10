@@ -1,5 +1,7 @@
 # Created by https://www.gitignore.io/api/rails,intellij
 
+node_modules
+
 ### Rails ###
 *.rbc
 capybara-*.html
