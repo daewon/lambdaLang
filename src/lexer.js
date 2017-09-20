@@ -9,6 +9,7 @@ class InputStream {
 
   next() {
     const ch = this.input.charAt(this.pos++);
+
     if (ch == "\n") {
       this.line++;
       this.col = 0;
@@ -88,7 +89,7 @@ class TokenStream {
       return this.isDigit(ch);
     };
 
-    const number = this.reaWhile(pIsNumber);
+    const number = this.readWhile(pIsNumber);
 
     return { type: "num", value: parseFloat(number) };
   }
@@ -127,7 +128,7 @@ class TokenStream {
     return { type: "str", value: this.readEscaped('"') };
   }
 
-  readComment() {
+  skipComment() {
     this.readWhile(ch => { return ch !== "\n"; });
 
     this.input.next();
@@ -141,7 +142,7 @@ class TokenStream {
     const ch = this.input.peek();
 
     if (ch === "#") {
-      this.readComment();
+      this.skipComment();
       return this.readNext();
     }
 
