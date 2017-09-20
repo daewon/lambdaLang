@@ -5,6 +5,7 @@ const Is = lexer.InputStream;
 const Ts = lexer.TokenStream;
 
 describe("Lexer", () => {
+
   describe("InputStream", () => {
     const str = "abcdefg{}[] ";
     const is = new Is(str);
@@ -20,9 +21,11 @@ describe("Lexer", () => {
   });
 
   describe("TokenStream", () => {
+    const ts = new Ts(new Is("if name"));
+
     it("identifier", () => {
-      const ts = new Ts(new Is("if"));
-      assert.deepEqual(ts.peek(), { type: "kw", value: "if" });
+      assert.deepEqual(ts.next(), { type: "kw", value: "if" });
+      assert.deepEqual(ts.next(), { type: "var", value: "name" });
     });
   });
 });

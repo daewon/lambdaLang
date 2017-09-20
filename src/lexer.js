@@ -9,7 +9,12 @@ class InputStream {
 
   next() {
     const ch = this.input.charAt(this.pos++);
-    if (ch == "\n") this.line++, this.col = 0; else this.col++;
+    if (ch == "\n") {
+      this.line++;
+      this.col = 0;
+    } else {
+      this.col++;
+    }
 
     return ch;
   }
@@ -19,10 +24,10 @@ class InputStream {
   }
 
   eof() {
-    return this.peek() == "";
+    return this.peek() === "";
   }
 
-  croak(msg) {
+  error(msg) {
     throw new Error(msg + " (" + this.line + ":" + this.col + ")");
   }
 }
@@ -30,85 +35,85 @@ class InputStream {
 class TokenStream {
   constructor(input) {
     this.input = input;
-
     this.current = null;
-    this.KEYWORDS = ["if", "then", "else",  "lambda",  "λ",  "true",  "false"];
   }
 
-  is_keyword(x) {
-    return this.KEYWORDS.includes(x);
+  isKeyword(kw) {
+    const keywords = ["if", "then", "else",  "\\", "true",  "false"];
+    return keywords.includes(kw);
   }
 
-  is_digit(ch) {
-    return /[0-9]/i.test(ch);
+  isDigit(ch) {
+    return /[0-9]/.test(ch);
   }
 
-  is_id_start(ch) {
-    return /[a-zλ_]/i.test(ch);
+  isIdStart(ch) {
+    return /[a-z_]/i.test(ch);
   }
 
-  is_id(ch) {
-    return this.is_id_start(ch) || "?!-<>=0123456789".includes(ch);
+  isId(ch) {
+    return this.isIdStart(ch) || "?!-<>=0123456789".includes(ch);
   }
 
-  is_op_char(ch) {
+  isOpChar(ch) {
     return "+-*/%=&|<>!".includes(ch);
   }
 
-  is_punc(ch) {
+  isPunc(ch) {
     return ",;(){}[]".includes(ch);
   }
 
-  is_whitespace(ch) {
+  isWhitespace(ch) {
     return " \t\n".includes(ch);
   }
 
-  read_while(predicate) {
+  readWhile(p) {
     const arr = [];
-    while (!this.input.eof() && predicate(this.input.peek())) {
+
+    while (!this.input.eof() && p(this.input.peek())) {
       arr.push(this.input.next());
     }
 
     return arr.join("");
   }
 
-  read_number() {
-    let has_dot = false;
-    let number = this.read_while(ch => {
-      if (ch == ".") {
-        if (has_dot) { return false; }
-        has_dot = true;
-
+  readNumber() {
+    let hasDot = false;
+    const pIsNumber = ch => {
+      if (ch === ".") {
+        if (hasDot) { return false; } else { hasDot = true; }
         return true;
-      }
+      };
 
-      return this.is_digit(ch);
-    });
+      return this.isDigit(ch);
+    };
+
+    const number = this.reaWhile(pIsNumber);
 
     return { type: "num", value: parseFloat(number) };
   }
 
-  read_ident() {
-    const id = this.read_while(this.is_id.bind(this));
-
-    return {
-      type  : this.is_keyword(id) ? "kw" : "var",
-      value : id
-    };
+  readIdent() {
+    const id = this.readWhile(this.isId.bind(this));
+    return { type: this.isKeyword(id) ? "kw" : "var", value: id };
   }
 
-  read_escaped(end) {
-    let escaped = false, arr = [];
+
+  readEscaped(end) {
+    let escaped = false;
+    const arr = [];
+
     this.input.next();
 
     while (!this.input.eof()) {
       const ch = this.input.next();
+
       if (escaped) {
         arr.push(ch);
         escaped = false;
-      } else if (ch == "\\") {
+      } else if (ch === "\\") {
         escaped = true;
-      } else if (ch == end) {
+      } else if (ch === end) {
         break;
       } else {
         arr.push(ch);
@@ -118,59 +123,56 @@ class TokenStream {
     return arr.join("");
   }
 
-  read_string() {
-    return { type: "str", value: this.read_escaped('"') };
+  readString() {
+    return { type: "str", value: this.readEscaped('"') };
   }
 
-  skip_comment() {
-    this.read_while(ch => { return ch != "\n"; });
+  readComment() {
+    this.readWhile(ch => { return ch !== "\n"; });
+
     this.input.next();
   }
 
-  read_next() {
-    this.read_while(this.is_whitespace);
+  readNext() {
+    this.readWhile(this.isWhitespace.bind(this));
+
     if (this.input.eof()) { return null; };
 
     const ch = this.input.peek();
 
-    if (ch == "#") {
-      this.skip_comment();
-      return this.read_next();
+    if (ch === "#") {
+      this.readComment();
+      return this.readNext();
     }
 
-    if (ch == '"') { return this.read_string(); }
-    if (this.is_digit(ch)) { return this.read_number(); }
-    if (this.is_id_start(ch)) { return this.read_ident(); }
-    if (this.is_punc(ch)) {
-      return {
-        type  : "punc",
-        value : this.input.next()
-      };
+    if (ch === '"') { return this.readString(); }
+    if (this.isDigit(ch)) { return this.readNumber(); }
+    if (this.isIdStart(ch)) { return this.readIdent(); }
+
+    if (this.isPunc(ch)) {
+      return { type: "punc", value: this.input.next() };
     }
 
-    if (this.is_op_char(ch)) {
-      return {
-        type  : "op",
-        value : this.read_while(this.is_op_char)
-      };
+    if (this.isOpChar(ch)) {
+      return { type: "op", value: this.readWhile(this.isOpChar.bind(this)) };
     }
 
-    this.input.croak("Can't handle character: " + ch);
+    this.input.error("Can't handle character: " + ch);
   };
 
   peek() {
     if (!this.current) {
-      this.current = this.read_next();
+      this.current = this.readNext();
     }
 
     return this.current;
   }
 
   next() {
-    const tok = this.current;
+    const token = this.current;
     this.current = null;
 
-    return tok || this.read_next();
+    return token || this.readNext();
   }
 
   eof() {
